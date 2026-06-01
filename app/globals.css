@@ -1,0 +1,53 @@
+@import "../styles/hero.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+  /* scroll-behavior removed — Lenis handles smooth scrolling */
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-inter), sans-serif;
+}
+
+/* ── Gold system — apply as gradient, never flat ──
+   `color: var(--refined-gold)` is the solid fallback: browsers that don't
+   support -webkit-text-fill-color ignore the transparent fill and render
+   solid refined-gold instead of invisible text. Where text-fill IS
+   supported (all current engines), transparent reveals the gradient. */
+.text-gold-gradient {
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--refined-gold);
+}
+
+.bg-gold-gradient {
+  background: var(--gold-gradient);
+}
+
+/* Gold hairline — 1px gradient border (signature interaction base) */
+.border-gold-gradient {
+  border-image: var(--gold-gradient) 1;
+}
+
+/* ── Hero background — radial gold wash over vault-ink → graphite-navy ── */
+.hero-bg-gradient {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(199, 162, 58, 0.08) 0%, rgba(8, 11, 17, 0) 55%),
+    linear-gradient(180deg, #080B11 0%, #10161F 100%);
+}

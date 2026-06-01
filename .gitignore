@@ -1,0 +1,35 @@
+.next
+node_modules
+.vercel
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+.aider*
+
+# Next.js generated
+next-env.d.ts
+*.tsbuildinfo
+
+# Tooling / agent state
+.opencode/
+.playwright-mcp/
+.omc/logs/
+.omc/sessions/
+.omc/state/checkpoints/
+.omc/state/sessions/
+.omc/state/agent-replay-*.jsonl
+
+# QA / audit captures (regenerated on demand, not source)
+/qa-*.png
+/audit-*.png
+/audit-*.jpeg
+/mobile-375*.png
+/SGC_Tech_AI_*.md
+/SGC_Tech_AI_*.pdf
+
+# Scratch media (reference material, not shipped)
+/public/videos/video-1780134024608.mp4
+/public/final logo.png
+/public/bg-music/bg-music (1).mp3
