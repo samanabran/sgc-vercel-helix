@@ -3,17 +3,25 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 
-const R = 2.5;
-const PITCH = 1.2;
-const T_MAX = 8 * Math.PI;
-const TUBE_RADIUS = 0.06;
-const RUNG_SPACING = 0.6;
-const HELIX_COLOR = "#C7A23A"; // refined-gold — material body
-const HELIX_EMISSIVE = "#EFDBA0"; // champagne — gradient highlight under bloom
+// ─── Helix geometry constants ──────────────────────────────────
+const R = 2.5;                    // Strand orbit radius
+const PITCH = 1.2;                // Vertical rise per radian
+const T_MAX = 8 * Math.PI;       // Total angular sweep (4 full turns)
+const TUBE_RADIUS = 0.09;        // Strand tube thickness (thicker for cinematic presence)
+const RUNG_SPACING = 0.6;        // Vertical gap between rungs
+const RUNG_RADIUS = 0.04;        // Rung cylinder radius (thicker for visibility)
+const NODE_SPACING = 8;           // Decorative sphere spacing (more frequent)
+
+// ─── Color palette ─────────────────────────────────────────────
+const HELIX_COLOR = "#C7A23A";           // Refined gold — material body
+const HELIX_EMISSIVE = "#EFDBA0";        // Champagne — gradient highlight under bloom
+const NODE_COLOR = "#FFD866";            // Bright gold for nodes
+const NODE_EMISSIVE = "#FFE4A0";         // Warm champagne for node glow
+const RUNG_COLOR = "#B89030";            // Slightly deeper gold for rungs
+const RUNG_EMISSIVE = "#E0C878";         // Warm mid-tone for rung bloom
+
 // Centers the helix at y=0: t=0..8π maps y=0..~30, offset by half
 const Y_OFFSET = (T_MAX * PITCH) / 2;
-// Decorative node spheres: every Nth strand point gets a gold sphere
-const NODE_SPACING = 10;
 
 function buildStrandPoints(phase: number, segments: number): THREE.Vector3[] {
   return Array.from({ length: segments + 1 }, (_, i) => {
@@ -60,7 +68,7 @@ interface NodeData {
 
 function buildNodeData(segments: number): NodeData[] {
   const nodes: NodeData[] = [];
-  for (let phase of [0, Math.PI]) {
+  for (const phase of [0, Math.PI]) {
     for (let i = 0; i <= segments; i += NODE_SPACING) {
       const t = (i / segments) * T_MAX;
       const x = R * Math.cos(t + phase);
@@ -72,28 +80,70 @@ function buildNodeData(segments: number): NodeData[] {
   return nodes;
 }
 
+// Build tiny accent spheres at each rung-strand junction point
+interface JunctionData {
+  position: [number, number, number];
+}
+
+function buildJunctionData(): JunctionData[] {
+  const junctions: JunctionData[] = [];
+  for (let y = -Y_OFFSET; y <= Y_OFFSET; y += RUNG_SPACING) {
+    const t = (y + Y_OFFSET) / PITCH;
+    if (t < 0 || t > T_MAX) continue;
+    // Two junctions per rung — one on each strand
+    junctions.push({
+      position: [R * Math.cos(t), y, R * Math.sin(t)],
+    });
+    junctions.push({
+      position: [R * Math.cos(t + Math.PI), y, R * Math.sin(t + Math.PI)],
+    });
+  }
+  return junctions;
+}
+
 interface DNAHelixProps {
   segments?: number;
 }
 
 export default function DNAHelix({ segments = 400 }: DNAHelixProps) {
-  const { strandAGeo, strandBGeo, rungBaseGeo, helixMat, nodeMat, rungs, nodes } = useMemo(() => {
-    // Premium gold material — high metalness for metallic reflections under bloom
+  const {
+    strandAGeo, strandBGeo, rungBaseGeo, helixMat, nodeMat, rungMat,
+    junctionMat, rungs, nodes, junctions,
+  } = useMemo(() => {
+    // ── Premium gold material — high metalness for cinematic reflections ──
     const mat = new THREE.MeshStandardMaterial({
       color: HELIX_COLOR,
       emissive: HELIX_EMISSIVE,
-      emissiveIntensity: 0.65,
-      metalness: 0.72,
-      roughness: 0.18,
+      emissiveIntensity: 0.7,
+      metalness: 0.82,
+      roughness: 0.12,
     });
 
-    // Decorative node material — even more metallic for sparkle
+    // ── Rung material — slightly deeper gold for visual separation ──
+    const rMat = new THREE.MeshStandardMaterial({
+      color: RUNG_COLOR,
+      emissive: RUNG_EMISSIVE,
+      emissiveIntensity: 0.55,
+      metalness: 0.75,
+      roughness: 0.2,
+    });
+
+    // ── Decorative node material — high sparkle for bloom catch ──
     const nMat = new THREE.MeshStandardMaterial({
-      color: "#FFCC55",
-      emissive: "#EFDBA0",
-      emissiveIntensity: 0.4,
-      metalness: 0.92,
-      roughness: 0.15,
+      color: NODE_COLOR,
+      emissive: NODE_EMISSIVE,
+      emissiveIntensity: 0.5,
+      metalness: 0.95,
+      roughness: 0.08,
+    });
+
+    // ── Junction accent material — brightest gold for rung-strand intersections ──
+    const jMat = new THREE.MeshStandardMaterial({
+      color: "#FFE088",
+      emissive: "#FFF0C0",
+      emissiveIntensity: 0.6,
+      metalness: 0.9,
+      roughness: 0.1,
     });
 
     const geoA = new THREE.TubeGeometry(
@@ -111,7 +161,7 @@ export default function DNAHelix({ segments = 400 }: DNAHelixProps) {
       false
     );
     // Unit cylinder, height=1, scaled per-rung
-    const rungBase = new THREE.CylinderGeometry(0.03, 0.03, 1, 6, 1);
+    const rungBase = new THREE.CylinderGeometry(RUNG_RADIUS, RUNG_RADIUS, 1, 6, 1);
 
     return {
       strandAGeo: geoA,
@@ -119,33 +169,51 @@ export default function DNAHelix({ segments = 400 }: DNAHelixProps) {
       rungBaseGeo: rungBase,
       helixMat: mat,
       nodeMat: nMat,
+      rungMat: rMat,
+      junctionMat: jMat,
       rungs: buildRungData(),
       nodes: buildNodeData(segments),
+      junctions: buildJunctionData(),
     };
   }, [segments]);
 
   return (
     <group>
+      {/* Double helix strands */}
       <mesh geometry={strandAGeo} material={helixMat} />
       <mesh geometry={strandBGeo} material={helixMat} />
+
+      {/* Ladder rungs connecting strands */}
       {rungs.map((rung, i) => (
         <mesh
           key={`rung-${i}`}
           geometry={rungBaseGeo}
-          material={helixMat}
+          material={rungMat}
           position={rung.position}
           quaternion={rung.quaternion}
           scale={[1, rung.length, 1]}
         />
       ))}
+
       {/* Decorative sphere nodes on strand points — luxury detail that catches bloom */}
       {nodes.map((node, i) => (
         <mesh
           key={`node-${i}`}
           position={node.position}
         >
-          <sphereGeometry args={[0.055, 10, 10]} />
+          <sphereGeometry args={[0.065, 12, 12]} />
           <primitive object={nodeMat} attach="material" />
+        </mesh>
+      ))}
+
+      {/* Junction accents — tiny bright spheres at rung-strand meeting points */}
+      {junctions.map((j, i) => (
+        <mesh
+          key={`junc-${i}`}
+          position={j.position}
+        >
+          <sphereGeometry args={[0.045, 8, 8]} />
+          <primitive object={junctionMat} attach="material" />
         </mesh>
       ))}
     </group>

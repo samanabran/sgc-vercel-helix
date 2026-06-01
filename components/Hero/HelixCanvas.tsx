@@ -37,16 +37,18 @@ export default function HelixCanvas({
   return (
     <Canvas
       dpr={[1, 2]}
-      camera={{ position: [0, -5.25, 7.5], fov: 50 }}
+      camera={{ position: [0, 2, 16], fov: 42 }}
       gl={{
         toneMapping: 4,           // ReinhardToneMapping
-        toneMappingExposure: 1.15,
+        toneMappingExposure: 1.2,
         antialias: true,
+        alpha: false,
+        powerPreference: "high-performance",
       }}
       style={{ background: "#080B11", width: "100%", height: "100%" }}
     >
-      {/* Subtle depth fog — fades distant geometry into vault-ink */}
-      <fog attach="fog" args={["#080B11", 12, 28]} />
+      {/* Deep fog — fades distant geometry into cinematic vault-dark */}
+      <fog attach="fog" args={["#080B11", 10, 30]} />
       <Suspense fallback={<PulsingDot />}>
         <Scene
           scrollProgressRef={scrollProgressRef}

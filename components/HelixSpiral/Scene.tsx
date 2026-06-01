@@ -3,23 +3,23 @@
 import { ExperienceProvider, useExperienceStore } from "@/hooks/useExperienceStoreImpl";
 
 import { Suspense, useRef, useEffect } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useTexture } from "@react-three/drei";
-import { EffectComposer, Bloom } from "@react-three/postprocessing";
+import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import SceneLighting from "./SceneLighting";
 import DNAHelix from "./DNAHelix";
 import DiamondRing from "./DiamondRing";
 import Particles from "./Particles";
 import { DIAMOND_IMAGES } from "./diamonds.config";
-import { progressToCamIndex, diamondY } from "./helixMotion";
+import { getCameraState, getHelixRotation, getBloomIntensity, progressToCamIndex, diamondY } from "./helixMotion";
 
 // Chapter mapping for ExperienceStore — each diamond maps to a narrative chapter
 const DIAMOND_CHAPTERS: Array<"compliance" | "automation" | "growth" | "operations"> = [
-  "operations", // 0 — Logo beacon
-  "automation", // 1 — Excel/WhatsApp
-  "automation", // 2 — Manual workflow
-  "automation", // 3 — Missed calls after 6 PM
+  "operations",  // 0 — Logo beacon
+  "automation",  // 1 — Excel/WhatsApp
+  "automation",  // 2 — Manual workflow
+  "automation",  // 3 — Missed calls after 6 PM
   "operations",  // 4 — Commission disputes
   "growth",      // 5 — Month-old reports
   "compliance",  // 6 — AED 150K filing
@@ -57,6 +57,10 @@ function SceneContent({
   const outerGroupRef = useRef<THREE.Group>(null!);
   const [, dispatch] = useExperienceStore();
   const prevActiveRef = useRef(-1);
+  const { camera } = useThree();
+
+  // Track bloom intensity for smooth transitions
+  const bloomIntensityRef = useRef(0.7);
 
   // Sync active diamond to ExperienceStore — only dispatches on change
   useEffect(() => {
@@ -72,26 +76,61 @@ function SceneContent({
   }, [activeIndex, dispatch]);
 
   useFrame((state, delta) => {
-    // Camera + helix rotation are PURE functions of scroll progress, so the
-    // scene reverses frame-for-frame. Smoothness comes from Lenis-smoothed
-    // `progress`, not from per-frame damping. (See helixMotion.ts.)
     const progress = scrollProgressRef.current ?? 0;
 
-    // Camera rides the helix axis, dwelling on each diamond. Z = 7.5 keeps the
-    // active diamond surface filling the frame without losing the helix.
-    const camIndex = progressToCamIndex(progress);
-    const camY = diamondY(camIndex);
-    state.camera.position.set(0, camY + 0.5, 7.5);
-    state.camera.lookAt(0, camY, 0);
+    // ── Cinematic camera from helixMotion ──────────────────────
+    const camState = getCameraState(progress);
 
+    // Smoothly interpolate camera position for buttery transitions
+    state.camera.position.x = THREE.MathUtils.lerp(
+      state.camera.position.x,
+      camState.position[0],
+      delta * 4
+    );
+    state.camera.position.y = THREE.MathUtils.lerp(
+      state.camera.position.y,
+      camState.position[1],
+      delta * 4
+    );
+    state.camera.position.z = THREE.MathUtils.lerp(
+      state.camera.position.z,
+      camState.position[2],
+      delta * 4
+    );
+
+    // FOV zoom — smooth interpolation for cinematic feel
+    if ((state.camera as THREE.PerspectiveCamera).fov !== undefined) {
+      const perspCam = state.camera as THREE.PerspectiveCamera;
+      perspCam.fov = THREE.MathUtils.lerp(perspCam.fov, camState.fov, delta * 3);
+      perspCam.updateProjectionMatrix();
+    }
+
+    // Look-at target
+    const lookTarget = new THREE.Vector3(
+      camState.lookAt[0],
+      camState.lookAt[1],
+      camState.lookAt[2]
+    );
+    const currentLookAt = new THREE.Vector3();
+    state.camera.getWorldDirection(currentLookAt);
+    const targetDir = lookTarget.clone().sub(state.camera.position).normalize();
+    currentLookAt.lerp(targetDir, delta * 5);
+    state.camera.lookAt(
+      state.camera.position.x + currentLookAt.x,
+      state.camera.position.y + currentLookAt.y,
+      state.camera.position.z + currentLookAt.z
+    );
+
+    // ── Helix rotation — scroll-driven choreography ────────────
     if (outerGroupRef.current) {
-      // One full scroll-driven revolution — deterministic in progress. The old
-      // free-running idle auto-spin was a time accumulator that made the same
-      // progress render differently each pass and broke reverse scrubbing.
-      outerGroupRef.current.rotation.y = progress * Math.PI * 2;
+      const targetRotY = getHelixRotation(progress);
+      outerGroupRef.current.rotation.y = THREE.MathUtils.lerp(
+        outerGroupRef.current.rotation.y,
+        targetRotY,
+        delta * 4
+      );
 
-      // Mouse parallax: subtle tilt. Interactive and self-resetting (0 when the
-      // pointer is still) — orthogonal to scroll, doesn't affect reversibility.
+      // Mouse parallax: subtle tilt. Interactive and self-resetting
       if (!reducedMotion && mouseRef?.current) {
         outerGroupRef.current.rotation.x = THREE.MathUtils.lerp(
           outerGroupRef.current.rotation.x,
@@ -105,6 +144,13 @@ function SceneContent({
         );
       }
     }
+
+    // ── Dynamic bloom intensity ────────────────────────────────
+    bloomIntensityRef.current = THREE.MathUtils.lerp(
+      bloomIntensityRef.current,
+      getBloomIntensity(progress),
+      delta * 2
+    );
   });
 
   return (
@@ -121,8 +167,7 @@ function SceneContent({
       </gridHelper>
 
       {/* Single rotation group — helix and diamonds share the same parent so they
-          rotate in lockstep. RotatingSpine removed: it was spinning the helix alone
-          at a different rate, visually decoupling it from the diamond positions. */}
+          rotate in lockstep. */}
       <group ref={outerGroupRef}>
         <DNAHelix segments={strandSegments} />
         <Suspense fallback={null}>
@@ -141,10 +186,14 @@ function SceneContent({
       {/* Bloom post-processing — luxurious gold glow on emissive surfaces */}
       <EffectComposer>
         <Bloom
-          intensity={0.7}
-          luminanceThreshold={0.2}
+          intensity={bloomIntensityRef.current}
+          luminanceThreshold={0.15}
           luminanceSmoothing={0.9}
           mipmapBlur
+        />
+        <Vignette
+          offset={0.3}
+          darkness={0.7}
         />
       </EffectComposer>
     </>

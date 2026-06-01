@@ -94,7 +94,7 @@ export default function DiamondScrollHero() {
     return <ReducedMotionFallback />;
   }
 
-  const particleCount = isMobile ? 120 : 400;
+  const particleCount = isMobile ? 180 : 500;
   const diamondSize = isMobile ? 2.0 : 2.8;
   const strandSegments = isMobile ? 300 : 400;
 
@@ -126,16 +126,58 @@ export default function DiamondScrollHero() {
           strandSegments={strandSegments}
           scrollVelocityRef={scrollVelocityRef}
         />
-        {/* Edge vignette — darkens corners without blocking center */}
+
+        {/* ── Cinematic edge vignette ──────────────────────────── */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             pointerEvents: "none",
             zIndex: 2,
-            background: "radial-gradient(ellipse 70% 70% at 50% 50%, transparent 50%, rgba(8,11,17,0.65) 100%)",
+            background: "radial-gradient(ellipse 65% 65% at 50% 50%, transparent 45%, rgba(8,11,17,0.75) 100%)",
           }}
         />
+
+        {/* ── Cinematic letterbox bars (subtle) ────────────────── */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "3.5vh",
+            background: "linear-gradient(to bottom, rgba(8,11,17,0.5), transparent)",
+            pointerEvents: "none",
+            zIndex: 2,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "3.5vh",
+            background: "linear-gradient(to top, rgba(8,11,17,0.5), transparent)",
+            pointerEvents: "none",
+            zIndex: 2,
+          }}
+        />
+
+        {/* ── Subtle film grain overlay ────────────────────────── */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            zIndex: 3,
+            opacity: 0.035,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
+            backgroundSize: "128px 128px",
+            mixBlendMode: "overlay",
+          }}
+        />
+
         {/* Audio toggle — top-right corner, above canvas */}
         <div
           style={{
@@ -149,7 +191,10 @@ export default function DiamondScrollHero() {
         </div>
 
         {/* HTML caption overlay — sits above the canvas */}
-        <CinematicCaption activeIndex={activeIndex} />
+        <CinematicCaption
+          activeIndex={activeIndex}
+          scrollProgress={scrollProgressRef.current}
+        />
 
         {/* Scroll hint — visible at scroll=0, fades immediately on scroll */}
         <div
