@@ -111,6 +111,15 @@ function SceneContent({
     <>
       <SceneLighting />
 
+      {/* Subtle gold grid floor — faint reflection for depth grounding */}
+      <gridHelper
+        args={[24, 24, 0xFFAA33, 0x332211]}
+        position={[0, -6, 0]}
+        rotation={[0, 0, 0]}
+      >
+        <meshBasicMaterial attach="material" transparent opacity={0.08} />
+      </gridHelper>
+
       {/* Single rotation group — helix and diamonds share the same parent so they
           rotate in lockstep. RotatingSpine removed: it was spinning the helix alone
           at a different rate, visually decoupling it from the diamond positions. */}
@@ -129,10 +138,12 @@ function SceneContent({
         />
       </group>
 
+      {/* Bloom post-processing — luxurious gold glow on emissive surfaces */}
       <EffectComposer>
         <Bloom
-          intensity={0.55}
-          luminanceThreshold={0.32}
+          intensity={0.7}
+          luminanceThreshold={0.2}
+          luminanceSmoothing={0.9}
           mipmapBlur
         />
       </EffectComposer>

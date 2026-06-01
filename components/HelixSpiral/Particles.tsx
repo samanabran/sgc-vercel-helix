@@ -89,21 +89,21 @@ export default function Particles({ count = 400, reduced = false, scrollVelocity
         <bufferGeometry>
           <bufferAttribute ref={fgRef} attach="attributes-position" args={[fg.positions, 3]} />
         </bufferGeometry>
-        <pointsMaterial color="#EFDBA0" size={0.13} transparent opacity={0.60} sizeAttenuation depthWrite={false} />
+        <pointsMaterial color="#EFDBA0" size={0.13} transparent opacity={0.60} sizeAttenuation depthWrite={false} blending={THREE.AdditiveBlending} />
       </points>
       {/* Midground: refined-gold, standard distribution (gradient mid stop) */}
       <points>
         <bufferGeometry>
           <bufferAttribute ref={mgRef} attach="attributes-position" args={[mg.positions, 3]} />
         </bufferGeometry>
-        <pointsMaterial color="#C7A23A" size={0.07} transparent opacity={0.52} sizeAttenuation depthWrite={false} />
+        <pointsMaterial color="#C7A23A" size={0.07} transparent opacity={0.52} sizeAttenuation depthWrite={false} blending={THREE.AdditiveBlending} />
       </points>
       {/* Background: antique-bronze, small, wide spread (gradient depth stop) */}
       <points>
         <bufferGeometry>
           <bufferAttribute ref={bgRef} attach="attributes-position" args={[bg.positions, 3]} />
         </bufferGeometry>
-        <pointsMaterial color="#8A6A1E" size={0.04} transparent opacity={0.38} sizeAttenuation depthWrite={false} />
+        <pointsMaterial color="#8A6A1E" size={0.04} transparent opacity={0.38} sizeAttenuation depthWrite={false} blending={THREE.AdditiveBlending} />
       </points>
     </group>
   );
